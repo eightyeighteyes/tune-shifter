@@ -63,9 +63,7 @@ def _dir_created_event(path: str) -> MagicMock:
 
 
 class TestOnMoved:
-    def test_directory_moved_into_staging_is_scheduled(
-        self, config: Config
-    ) -> None:
+    def test_directory_moved_into_staging_is_scheduled(self, config: Config) -> None:
         """Dragging a folder from Finder fires a moved event; it must be scheduled."""
         handler = _make_handler(config)
         dest = str(config.paths.staging / "my-album")
@@ -133,9 +131,7 @@ class TestOnModified:
 
         mock_schedule.assert_called_once_with(album_dir)
 
-    def test_staging_root_modified_ignores_errors_dir(
-        self, config: Config
-    ) -> None:
+    def test_staging_root_modified_ignores_errors_dir(self, config: Config) -> None:
         handler = _make_handler(config)
         (config.paths.staging / "errors").mkdir()
 
@@ -144,9 +140,7 @@ class TestOnModified:
 
         mock_schedule.assert_not_called()
 
-    def test_modified_event_on_subdirectory_is_ignored(
-        self, config: Config
-    ) -> None:
+    def test_modified_event_on_subdirectory_is_ignored(self, config: Config) -> None:
         """Modification events inside staging subdirectories are not acted on."""
         handler = _make_handler(config)
         subdir = config.paths.staging / "subdir"
@@ -157,9 +151,7 @@ class TestOnModified:
 
         mock_schedule.assert_not_called()
 
-    def test_already_pending_items_not_rescheduled(
-        self, config: Config
-    ) -> None:
+    def test_already_pending_items_not_rescheduled(self, config: Config) -> None:
         handler = _make_handler(config)
         album_dir = config.paths.staging / "my-album"
         album_dir.mkdir()
@@ -175,9 +167,7 @@ class TestOnModified:
 
 
 class TestOnCreated:
-    def test_directory_created_in_staging_is_scheduled(
-        self, config: Config
-    ) -> None:
+    def test_directory_created_in_staging_is_scheduled(self, config: Config) -> None:
         handler = _make_handler(config)
         path = str(config.paths.staging / "my-album")
 
