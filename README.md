@@ -84,7 +84,7 @@ After install, download the Playwright browser binaries required for Bandcamp au
 ```bash
 git clone https://github.com/eightyeighteyes/tune-shifter
 cd tune-shifter
-pip install -e .
+poetry install
 playwright install chromium
 ```
 
@@ -214,11 +214,11 @@ The session file (`bandcamp_session.json`) is written with owner-only permission
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+poetry install
 playwright install chromium
-pytest tests/          # run tests
-mypy tune_shifter/     # type check
-black tune_shifter/ tests/  # format
+poetry run pytest      # run tests
+poetry run mypy tune_shifter/     # type check
+poetry run black tune_shifter/ tests/  # format
 ```
 
 
