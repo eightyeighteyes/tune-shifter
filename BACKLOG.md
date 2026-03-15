@@ -1,5 +1,10 @@
 # Backlog
+
+> Estimates use the vinyl scale: Single (<0.5), Side (0.5–1), LP (2), 2xLP (4), Box Set (4–8), Discography (>8)
+> ⚠️ = needs scoping before work can start
+
 ## Switch to Poetry for dependency management
+*Single* — migrate `pyproject.toml` from setuptools to Poetry; no logic changes
 
 ## Optimization: Check existing tags / embedded image to see if they even need to be updated
 *Single* — read tags before writing and skip files that are already correct
@@ -11,20 +16,13 @@
 *Single* — watcher already handles ZIPs; extend to schedule individual audio files (`.mp3`, `.m4a`, etc.) dropped directly into staging
 
 ## Config Arguments
-
-*Don't make me ever edit the config file: let me set config through an argument*
-
-Running `tune-shifter config set paths.staging` lets a user set the staging path, etc.
-
-Running `tune-shifter config show` shows the whole config.
+*Side* — add `tune-shifter config set <key> <value>` and `tune-shifter config show` subcommands; reads/writes existing TOML file
 
 ## FLAC Support
-
-*I want FLAC to be as well supported as MP3 and M4A for tagging*
+*Side* — extend tagger, mover, and artwork embed to handle `.flac` via `mutagen.flac.FLAC`; mirrors existing MP3/M4A paths
 
 ## OGG Support
-
-*I want OGG to be as well supported as MP3 and M4A for tagging*
+*Side* — same as FLAC but via `mutagen.oggvorbis`; can be done alongside FLAC in one pass
 
 ## Cross-platform service installation (Linux systemd, Windows Task Scheduler)
 *Side* — Linux systemd unit file is straightforward; Windows Task Scheduler adds another side; can ship incrementally
@@ -49,28 +47,10 @@ Running `tune-shifter config show` shows the whole config.
 ⚠️ Needs scoping: does each subfolder get its own MusicBrainz lookup? How are mixed-album folders handled?
 
 ## Configurable Album Art Search
-
-*I want to be able to configure where album art is retrieved from*
-
-The default setting should be "default" and retrieve the art from musicbrainz.
-
-*I want to be able to retrieve album art from bandcamp*
-
-The configuration setting for this should be `"bandcamp"`
-
-*I want to be able to retrieve album art from iTunes / Apple Music*
-
-The configuration setting for this should be `"apple"`.
-
-*I want to be able to retrieve album art from Spotify*
-
-The configuration setting for this should be `"spotify"`.
-
-*I want to be able to retrieve album art from Qobuz*
-
-The configuration settings for this should be `"qobuz"`
+⚠️ Not scoped enough to start — each source (Bandcamp, Apple, Spotify, Qobuz) requires its own API integration and auth flow; estimate per source is ~Side to LP. Needs a design pass on the config schema and fallback order before any source is implemented.
 
 ## GUI / menu bar app for sync status
+*Box Set* — new surface area; needs technology choice (SwiftUI, Tauri, rumps, etc.) and design before scoping
 
 ## Allow a user to verify tags before they're written
 ⚠️ Not scoped — needs UI design (CLI prompt? TUI? GUI?) before estimating
