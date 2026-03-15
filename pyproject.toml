@@ -4,6 +4,9 @@ version = "0.8.0"
 description = "Automated audio library ingest from Bandcamp downloads."
 authors = []
 packages = [{include = "tune_shifter"}]
+# USAGE.md is read by the Homebrew formula's caveats block; MANIFEST.in is
+# ignored by poetry-core so it must be declared here explicitly.
+include = ["USAGE.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.11"
