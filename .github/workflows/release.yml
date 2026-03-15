@@ -19,11 +19,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install build tooling
-        run: pip install build
+      - name: Install Poetry
+        run: pip install poetry
 
       - name: Build sdist
-        run: python -m build --sdist
+        run: poetry build --format sdist
 
       - name: Locate tarball
         id: tarball

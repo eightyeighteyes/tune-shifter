@@ -17,14 +17,17 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Poetry
+        run: pip install poetry
+
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: poetry install
 
       - name: Check formatting
-        run: black --check .
+        run: poetry run black --check .
 
       - name: Type-check
-        run: mypy tune_shifter/
+        run: poetry run mypy tune_shifter/
 
       - name: Run tests
-        run: pytest
+        run: poetry run pytest
