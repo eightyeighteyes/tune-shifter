@@ -147,10 +147,24 @@ def main() -> None:
         _cmd_daemon(config)
 
 
+def _yn_prompt(question: str, default: bool = True) -> bool:
+    """Print a yes/no prompt and return the user's answer as a bool."""
+    hint = "[Y/n]" if default else "[y/N]"
+    try:
+        raw = input(f"  {question} {hint}: ").strip().lower()
+    except EOFError:
+        return default
+    if not raw:
+        return default
+    return raw.startswith("y")
+
+
 def _cmd_sync(config: Config, config_path: Path, mark_synced: bool = False) -> None:
+    first_run = False
     if config.bandcamp is None:
         if sys.stdin.isatty():
             config = Config.bandcamp_setup(config_path)
+            first_run = True
         else:
             print(
                 f"No [bandcamp] section in {config_path}. "
@@ -158,6 +172,14 @@ def _cmd_sync(config: Config, config_path: Path, mark_synced: bool = False) -> N
                 file=sys.stderr,
             )
             sys.exit(1)
+
+    if first_run:
+        # Ask whether the collection is already downloaded so we don't re-download
+        # everything for users who have already fetched their Bandcamp purchases manually.
+        # Default to 'y' — most first-time users have prior downloads.
+        mark_synced = _yn_prompt(
+            "Have you already downloaded your Bandcamp collection?", default=True
+        )
 
     syncer = Syncer(config)
     if mark_synced:
