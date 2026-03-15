@@ -1,38 +1,5 @@
 # Backlog
 
-## Improved Tag Sourcing
-
-*I want ALL the tags from MusicBrainz*
-
-When I validate the tags that tune-shifter writes against MusicBrainz Picard, I can see that we're not fully populating tags: in particular, Album Artist Sort Order and Artist Sort Order and Record Label are missed.
-
-The following is a nonexhaustive list of tags that are currently not populated, based on one release I checked (Aesop Rock's "Bazooka Tooth"):
-  - AcoustID
-  - Album Artist Sort Order
-  - Artist Sort Order
-  - Artists
-  - ASIN
-  - Barcode
-  - Catalog Number
-  - Disc Number
-  - MusicBrainz Artist ID
-  - MusicBrainz Recording ID
-  - MusicBrainz Release Artist ID
-  - MusicBrainz Release Group ID
-  - MusicBrainz Release ID
-  - Original Release Date
-  - Original Year
-  - Producer
-  - Record Label
-  - Release Country
-  - Release Status
-  - Release Type
-  - Script
-  - Total Discs
-  - Total Tracks
-
-In case requests against MusicBrainz fail (due to server error, connection error, or rate limit exceeded), retry with an exponential backoff.
-
 ## Bug: Path Characters Included in File Names
 
 To repro:
