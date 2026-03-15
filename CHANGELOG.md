@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.2.3...v0.3.0) (2026-03-15)
+
+
+### Features
+
+* handle macOS FSEvents coalescing for M4A folder ingest ([7fbfc7e](https://github.com/eightyeighteyes/tune-shifter/commit/7fbfc7efeafe33fa5a2403224e1dfda3317108a6))
+* handle macOS FSEvents coalescing for M4A folder ingest ([726b506](https://github.com/eightyeighteyes/tune-shifter/commit/726b506ae39d47c8e2ef367e6ac441d2c7d455db))
+* handle macOS FSEvents coalescing for M4A folder ingest  on_modified handler scans staging root on DirModifiedEvent so folders dragged in via Finder are processed even when FSEvents drops the DirCreatedEvent/DirMovedEvent. Also retries MusicBrainz searches with edition suffixes stripped (Deluxe Edition, Remastered, etc.). ([7fbfc7e](https://github.com/eightyeighteyes/tune-shifter/commit/7fbfc7efeafe33fa5a2403224e1dfda3317108a6))
+
 ## [Unreleased]
 
 ### Added
