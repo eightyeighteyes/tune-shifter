@@ -102,6 +102,9 @@ def main() -> None:
         format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    # musicbrainzngs logs at INFO for every unrecognised XML attribute (normal schema
+    # evolution). Silence those; real warnings and errors will still surface.
+    logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
 
     # Default to daemon when no subcommand given
     command = args.command or "daemon"
