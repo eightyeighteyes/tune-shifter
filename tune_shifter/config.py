@@ -81,6 +81,15 @@ class BandcampConfig:
     poll_interval_minutes: int  # 0 = manual only
 
 
+def _prompt(label: str, default: str) -> str:
+    """Print a prompt and return the user's input, or *default* if blank."""
+    try:
+        value = input(f"  {label} [{default}]: ").strip()
+    except EOFError:
+        value = ""
+    return value if value else default
+
+
 @dataclass
 class Config:
     paths: PathsConfig
@@ -88,6 +97,56 @@ class Config:
     artwork: ArtworkConfig
     library: LibraryConfig
     bandcamp: BandcampConfig | None = None
+
+    @classmethod
+    def first_run_setup(cls, path: Path) -> "Config":
+        """Interactively collect key config values, write *path*, and return Config.
+
+        Prompts for the three fields with no sensible universal default —
+        staging dir, library dir, and MusicBrainz contact email — then writes
+        the TOML file (substituting into DEFAULT_CONFIG_CONTENT to preserve
+        comments and formatting) and returns the ready-to-use Config.
+        """
+        print("\nWelcome to tune-shifter! Let's set up your configuration.")
+        print(f"(Config will be saved to {path})\n")
+
+        staging = Path(
+            _prompt("Staging directory (drop ZIPs/folders here)", "~/Music/staging")
+        ).expanduser()
+        library = Path(
+            _prompt("Library directory (finished files land here)", "~/Music")
+        ).expanduser()
+        contact = _prompt(
+            "Your email (sent in MusicBrainz User-Agent; required by their policy)",
+            "user@example.com",
+        )
+
+        config = cls(
+            paths=PathsConfig(staging=staging, library=library),
+            musicbrainz=MusicBrainzConfig(
+                app_name="tune-shifter",
+                app_version="0.1.0",
+                contact=contact,
+            ),
+            artwork=ArtworkConfig(min_dimension=1000, max_bytes=1_000_000),
+            library=LibraryConfig(
+                path_template="{album_artist}/{year} - {album}/{track:02d} - {title}.{ext}"
+            ),
+        )
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Substitute user values into the canonical TOML template so the file
+        # retains its comments and familiar structure rather than being
+        # machine-generated.  Order matters: staging is a prefix of library, so
+        # replace the longer string first.
+        toml_content = (
+            DEFAULT_CONFIG_CONTENT.replace('"~/Music/staging"', f'"{staging}"')
+            .replace('"~/Music"', f'"{library}"')
+            .replace('"user@example.com"', f'"{contact}"')
+        )
+        path.write_text(toml_content)
+        print(f"\nConfiguration saved to {path}\n")
+        return config
 
     @classmethod
     def load(cls, path: Path = DEFAULT_CONFIG_PATH) -> "Config":
