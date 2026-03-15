@@ -52,12 +52,15 @@ def move_to_library(
 
 def _destination(src: Path, library_root: Path, path_template: str) -> Path:
     tags = _read_tags(src)
+    # Sanitize string values before rendering so that unsafe characters (especially '/')
+    # in tag fields like title don't get interpreted as path separators.
+    safe_tags = {k: _sanitize(v) if isinstance(v, str) else v for k, v in tags.items()}
     try:
-        rendered = path_template.format(**tags)
+        rendered = path_template.format(**safe_tags)
     except (KeyError, ValueError) as exc:
         raise MoveError(f"Path template error for {src}: {exc}") from exc
 
-    # Sanitize each path component individually
+    # Sanitize each path component as a second layer of defence.
     parts = Path(rendered).parts
     safe_parts = [_sanitize(p) for p in parts]
     return library_root.joinpath(*safe_parts)
