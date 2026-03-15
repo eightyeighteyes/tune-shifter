@@ -1,11 +1,14 @@
 Welcome to tune-shifter!
 
-To get started, create the config by running:
+To get started, run:
    tune-shifter
 
-This will create a config file. Define your `staging` and `library` folders.
+On first run, you'll be asked for your staging directory, library directory,
+and contact email (used in the MusicBrainz User-Agent). Press Enter at each
+prompt to accept the shown default. The config is saved automatically and the
+daemon starts right away.
 
-Then install the service:
+Then install the service so it starts at login:
   tune-shifter install-service
 
 Now move a zip or folder into your staging folder and tune-shifter will take care of the rest!

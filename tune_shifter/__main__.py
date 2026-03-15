@@ -97,9 +97,19 @@ def main() -> None:
 
     try:
         config = Config.load(args.config)
-    except FileNotFoundError as exc:
-        print(exc, file=sys.stderr)
-        sys.exit(1)
+    except FileNotFoundError:
+        if sys.stdin.isatty():
+            config = Config.first_run_setup(args.config)
+        else:
+            # Non-interactive (script/service): default file was already written
+            # by Config.load(); print guidance and exit.
+            print(
+                f"Config file created at {args.config}. "
+                "Edit it with your staging/library paths and contact email, "
+                "then re-run tune-shifter.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     musicbrainzngs.set_useragent(
         config.musicbrainz.app_name,
