@@ -477,47 +477,93 @@ class TestDetectMime:
 
 
 class TestHasEmbeddedArt:
-    def test_mp3_with_apic_returns_true(self, tmp_path: Path) -> None:
-        """has_embedded_art returns True for an MP3 with an APIC frame."""
+    _MIN = 500
+    _MAX = 5_000_000
+
+    def _embed_mp3(self, path: Path, image_bytes: bytes) -> None:
         import mutagen.id3 as id3_
 
-        mp3 = tmp_path / "01.mp3"
-        mp3.write_bytes(b"\xff\xfb" * 64)
+        path.write_bytes(b"\xff\xfb" * 64)
         tags = id3_.ID3()
         tags["APIC:Cover"] = id3_.APIC(
-            encoding=3,
-            mime="image/jpeg",
-            type=3,
-            desc="Cover",
-            data=_make_jpeg(100, 100),
+            encoding=3, mime="image/jpeg", type=3, desc="Cover", data=image_bytes
         )
-        tags.save(str(mp3))
+        tags.save(str(path))
 
-        assert has_embedded_art(mp3) is True
+    def test_mp3_qualifying_art_returns_true(self, tmp_path: Path) -> None:
+        """Returns True for an MP3 whose embedded art meets dimension and byte limits."""
+        mp3 = tmp_path / "01.mp3"
+        self._embed_mp3(mp3, _make_jpeg(600, 600))
+
+        assert (
+            has_embedded_art(mp3, min_dimension=self._MIN, max_bytes=self._MAX) is True
+        )
+
+    def test_mp3_art_too_small_returns_false(self, tmp_path: Path) -> None:
+        """Returns False when embedded art dimensions are below min_dimension."""
+        mp3 = tmp_path / "01.mp3"
+        self._embed_mp3(mp3, _make_jpeg(200, 200))
+
+        assert (
+            has_embedded_art(mp3, min_dimension=self._MIN, max_bytes=self._MAX) is False
+        )
+
+    def test_mp3_art_too_large_in_bytes_returns_false(self, tmp_path: Path) -> None:
+        """Returns False when embedded art exceeds max_bytes."""
+        mp3 = tmp_path / "01.mp3"
+        image_bytes = _make_jpeg(600, 600)
+        self._embed_mp3(mp3, image_bytes)
+
+        # max_bytes set to 1 byte below the image size
+        assert (
+            has_embedded_art(
+                mp3, min_dimension=self._MIN, max_bytes=len(image_bytes) - 1
+            )
+            is False
+        )
 
     def test_mp3_without_apic_returns_false(self, tmp_path: Path) -> None:
-        """has_embedded_art returns False for an MP3 with no APIC frame."""
+        """Returns False for an MP3 with no APIC frame."""
         import mutagen.id3 as id3_
 
         mp3 = tmp_path / "01.mp3"
         mp3.write_bytes(b"\xff\xfb" * 64)
         id3_.ID3().save(str(mp3))
 
-        assert has_embedded_art(mp3) is False
+        assert (
+            has_embedded_art(mp3, min_dimension=self._MIN, max_bytes=self._MAX) is False
+        )
 
-    def test_m4a_with_covr_returns_true(self, tmp_path: Path) -> None:
-        """has_embedded_art returns True for an M4A with a covr tag."""
+    def test_m4a_qualifying_art_returns_true(self, tmp_path: Path) -> None:
+        """Returns True for an M4A whose embedded art meets quality requirements."""
         m4a = tmp_path / "01.m4a"
         m4a.write_bytes(b"\x00" * 32)
 
         mock_mp4 = MagicMock()
-        mock_mp4.tags = {"covr": [b"\xff\xd8\xff"]}  # non-empty covr
+        mock_mp4.tags = {"covr": [_make_jpeg(600, 600)]}
 
         with patch("tune_shifter.artwork.mutagen.mp4.MP4", return_value=mock_mp4):
-            assert has_embedded_art(m4a) is True
+            assert (
+                has_embedded_art(m4a, min_dimension=self._MIN, max_bytes=self._MAX)
+                is True
+            )
+
+    def test_m4a_art_too_small_returns_false(self, tmp_path: Path) -> None:
+        """Returns False when M4A embedded art dimensions are below min_dimension."""
+        m4a = tmp_path / "01.m4a"
+        m4a.write_bytes(b"\x00" * 32)
+
+        mock_mp4 = MagicMock()
+        mock_mp4.tags = {"covr": [_make_jpeg(200, 200)]}
+
+        with patch("tune_shifter.artwork.mutagen.mp4.MP4", return_value=mock_mp4):
+            assert (
+                has_embedded_art(m4a, min_dimension=self._MIN, max_bytes=self._MAX)
+                is False
+            )
 
     def test_m4a_without_covr_returns_false(self, tmp_path: Path) -> None:
-        """has_embedded_art returns False for an M4A with no covr tag."""
+        """Returns False for an M4A with no covr tag."""
         m4a = tmp_path / "01.m4a"
         m4a.write_bytes(b"\x00" * 32)
 
@@ -525,10 +571,13 @@ class TestHasEmbeddedArt:
         mock_mp4.tags = {}
 
         with patch("tune_shifter.artwork.mutagen.mp4.MP4", return_value=mock_mp4):
-            assert has_embedded_art(m4a) is False
+            assert (
+                has_embedded_art(m4a, min_dimension=self._MIN, max_bytes=self._MAX)
+                is False
+            )
 
     def test_m4a_with_none_tags_returns_false(self, tmp_path: Path) -> None:
-        """has_embedded_art returns False when M4A tags object is None."""
+        """Returns False when M4A tags object is None."""
         m4a = tmp_path / "01.m4a"
         m4a.write_bytes(b"\x00" * 32)
 
@@ -536,19 +585,28 @@ class TestHasEmbeddedArt:
         mock_mp4.tags = None
 
         with patch("tune_shifter.artwork.mutagen.mp4.MP4", return_value=mock_mp4):
-            assert has_embedded_art(m4a) is False
+            assert (
+                has_embedded_art(m4a, min_dimension=self._MIN, max_bytes=self._MAX)
+                is False
+            )
 
     def test_unsupported_format_returns_false(self, tmp_path: Path) -> None:
-        """has_embedded_art returns False for unsupported file formats."""
+        """Returns False for unsupported file formats."""
         flac = tmp_path / "track.flac"
         flac.write_bytes(b"fLaC")
 
-        assert has_embedded_art(flac) is False
+        assert (
+            has_embedded_art(flac, min_dimension=self._MIN, max_bytes=self._MAX)
+            is False
+        )
 
     def test_read_error_returns_false(self, tmp_path: Path) -> None:
-        """has_embedded_art returns False when reading the file raises an exception."""
+        """Returns False when reading the file raises an exception."""
         mp3 = tmp_path / "01.mp3"
         mp3.write_bytes(b"\xff\xfb" * 64)
 
         with patch("tune_shifter.artwork.id3.ID3", side_effect=Exception("corrupt")):
-            assert has_embedded_art(mp3) is False
+            assert (
+                has_embedded_art(mp3, min_dimension=self._MIN, max_bytes=self._MAX)
+                is False
+            )

@@ -58,7 +58,10 @@ def run(path: Path, config: Config) -> None:
     # --- 3. Artwork -----------------------------------------------------------
     # Checked independently of tagging: a file can be tagged but lack art if a
     # prior run's artwork step failed non-fatally.
-    if all(has_embedded_art(f) for f in audio_files):
+    if all(
+        has_embedded_art(f, config.artwork.min_dimension, config.artwork.max_bytes)
+        for f in audio_files
+    ):
         logger.info("All files already have embedded art — skipping artwork step")
     else:
         try:
