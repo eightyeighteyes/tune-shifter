@@ -310,6 +310,9 @@ end try"""
         cwd=str(_SHORTCUT_APP.parent),
         check=True,
     )
+    # Force Spotlight to index the new app immediately; without this it may not
+    # appear in search until the next scheduled mdworker pass.
+    subprocess.run(["mdimport", str(_SHORTCUT_APP)], check=False)
     print(f"Shortcut installed: {_SHORTCUT_APP}")
     print('Open Spotlight (\u2318 Space), type "Bandcamp Sync", and press Enter.')
     print(
