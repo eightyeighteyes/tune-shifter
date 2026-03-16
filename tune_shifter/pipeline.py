@@ -6,7 +6,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from .artwork import ArtworkError, fetch_and_embed, has_embedded_art
+from .artwork import ArtworkError, fetch_and_embed
 from .config import Config
 from .extractor import ExtractionError, extract, find_audio_files
 from .mover import MoveError, move_to_library
@@ -56,26 +56,22 @@ def run(path: Path, config: Config) -> None:
         title = release.title
 
     # --- 3. Artwork -----------------------------------------------------------
-    # Checked independently of tagging: a file can be tagged but lack art if a
-    # prior run's artwork step failed non-fatally.
-    if all(
-        has_embedded_art(f, config.artwork.min_dimension, config.artwork.max_bytes)
-        for f in audio_files
-    ):
-        logger.info("All files already have embedded art — skipping artwork step")
-    else:
-        try:
-            fetch_and_embed(
-                mbid=mbid,
-                audio_files=audio_files,
-                min_dimension=config.artwork.min_dimension,
-                max_bytes=config.artwork.max_bytes,
-                release_group_mbid=rg_mbid,
-                directory=directory,
-            )
-        except ArtworkError as exc:
-            # Artwork failure is non-fatal: log and continue
-            logger.warning("Artwork step failed: %s", exc)
+    # Always run: even if art is already embedded, a higher-quality image may
+    # be available (e.g. a bundled cover.jpg in the ZIP that beats the art the
+    # original files shipped with).  fetch_and_embed handles the local-first
+    # fallback and is cheap when no network call is needed.
+    try:
+        fetch_and_embed(
+            mbid=mbid,
+            audio_files=audio_files,
+            min_dimension=config.artwork.min_dimension,
+            max_bytes=config.artwork.max_bytes,
+            release_group_mbid=rg_mbid,
+            directory=directory,
+        )
+    except ArtworkError as exc:
+        # Artwork failure is non-fatal: log and continue
+        logger.warning("Artwork step failed: %s", exc)
 
     # --- 4. Move --------------------------------------------------------------
     try:
