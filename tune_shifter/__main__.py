@@ -326,6 +326,13 @@ end try"""
     subprocess.run(
         ["codesign", "--force", "--sign", "-", str(_SHORTCUT_APP)], check=False
     )
+    # Register with Launch Services (the app database Spotlight queries for applications).
+    # mdimport alone is insufficient — lsregister is what makes an app appear in Spotlight.
+    _LS_REGISTER = Path(
+        "/System/Library/Frameworks/CoreServices.framework"
+        "/Frameworks/LaunchServices.framework/Support/lsregister"
+    )
+    subprocess.run([str(_LS_REGISTER), "-f", str(_SHORTCUT_APP)], check=False)
     subprocess.run(["mdimport", str(_SHORTCUT_APP)], check=False)
     print(f"Shortcut installed: {_SHORTCUT_APP}")
     print('Open Spotlight (\u2318 Space), type "Bandcamp Sync", and press Enter.')
