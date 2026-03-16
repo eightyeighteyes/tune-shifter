@@ -42,10 +42,9 @@ def _get_version() -> str:
         with open(_PYPROJECT, "rb") as f:
             data = tomllib.load(f)
         # pyproject.toml uses [tool.poetry], not the PEP 621 [project] table
-        version = (
-            data.get("tool", {}).get("poetry", {}).get("version")
-            or data.get("project", {}).get("version")
-        )
+        version = data.get("tool", {}).get("poetry", {}).get("version") or data.get(
+            "project", {}
+        ).get("version")
         return str(version or "unknown") + "-dev"
     try:
         return importlib.metadata.version("tune-shifter")
