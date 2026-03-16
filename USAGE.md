@@ -12,7 +12,6 @@ Bandcamp sync:
 
 Spotlight shortcut (macOS):
 
-  tune-shifter install-shortcut      # opens Shortcuts app — click "Add Shortcut"
-                                     # then find "Bandcamp Sync" in Spotlight
+  tune-shifter install-shortcut      # adds "Bandcamp Sync" to Spotlight
                                      # run 'tune-shifter sync' in a terminal first
                                      # to set up Bandcamp credentials
