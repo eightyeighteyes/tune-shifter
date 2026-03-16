@@ -15,6 +15,7 @@ from tune_shifter.tagger import (
     TrackInfo,
     _read_existing_metadata,
     _search_release,
+    _write_flac_tags,
     _write_tags,
     configure_musicbrainz,
     is_tagged,
@@ -431,10 +432,10 @@ class TestWriteTagsEdgeCases:
         )
 
     def test_unsupported_format_logs_warning(self, tmp_path: Path) -> None:
-        """_write_tags logs a warning for .flac files and does not raise."""
-        flac = tmp_path / "track.flac"
-        flac.write_bytes(b"fLaC")
-        _write_tags(flac, self._make_release())  # must not raise
+        """_write_tags logs a warning for unsupported formats and does not raise."""
+        ogg = tmp_path / "track.ogg"
+        ogg.write_bytes(b"OggS")
+        _write_tags(ogg, self._make_release())  # must not raise
 
     def test_mp3_without_id3_header_gets_fresh_tags(self, tmp_path: Path) -> None:
         """_write_tags on an MP3 with no ID3 header creates a fresh tag set."""
@@ -572,3 +573,215 @@ class TestReadReleaseMbids:
 
         assert rel == ""
         assert rg == ""
+
+    def test_flac_returns_correct_mbids(self, tmp_path: Path) -> None:
+        """read_release_mbids extracts both MBIDs from FLAC Vorbis comments."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        mock_flac = MagicMock()
+        mock_flac.tags = {
+            "MUSICBRAINZ_ALBUMID": ["rel-flac"],
+            "MUSICBRAINZ_RELEASEGROUPID": ["rg-flac"],
+        }
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            rel, rg = read_release_mbids(flac)
+
+        assert rel == "rel-flac"
+        assert rg == "rg-flac"
+
+
+class TestIsTaggedFlac:
+    def test_flac_with_mbid_returns_true(self, tmp_path: Path) -> None:
+        """is_tagged returns True when the FLAC has a MUSICBRAINZ_ALBUMID tag."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        mock_flac = MagicMock()
+        mock_flac.tags = {"MUSICBRAINZ_ALBUMID": ["rel-123"]}
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            assert is_tagged(flac) is True
+
+    def test_flac_without_mbid_returns_false(self, tmp_path: Path) -> None:
+        """is_tagged returns False when the FLAC has no MUSICBRAINZ_ALBUMID tag."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        mock_flac = MagicMock()
+        mock_flac.tags = {}
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            assert is_tagged(flac) is False
+
+    def test_flac_with_none_tags_returns_false(self, tmp_path: Path) -> None:
+        """is_tagged returns False when the FLAC tags object is None."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        mock_flac = MagicMock()
+        mock_flac.tags = None
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            assert is_tagged(flac) is False
+
+
+class TestTagDirectoryFlac:
+    def test_flac_tags_written(self, tmp_path: Path) -> None:
+        """MusicBrainz metadata is written to FLAC Vorbis comment fields."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        initial_tags: dict[str, Any] = {
+            "ARTIST": ["Old Artist"],
+            "ALBUM": ["Old Album"],
+            "TRACKNUMBER": ["1"],
+        }
+        mock_flac = MagicMock()
+        mock_flac.tags = initial_tags
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            with patch("musicbrainzngs.search_releases", return_value=SAMPLE_RELEASE):
+                with patch(
+                    "musicbrainzngs.get_release_by_id",
+                    return_value=SAMPLE_RELEASE_DETAIL,
+                ):
+                    release = tag_directory(tmp_path, [flac])
+
+        assert release.mbid == "abc-123"
+        assert initial_tags["ARTIST"] == ["Cool Artist"]
+        assert initial_tags["ALBUM"] == ["Great Album"]
+        assert initial_tags["DATE"] == ["2020"]
+        assert initial_tags["MUSICBRAINZ_ALBUMID"] == ["abc-123"]
+        assert initial_tags["MUSICBRAINZ_RELEASEGROUPID"] == ["rg-456"]
+        mock_flac.save.assert_called()
+
+    def test_flac_match_track_reads_tracknumber(self, tmp_path: Path) -> None:
+        """_match_track correctly parses TRACKNUMBER from FLAC Vorbis comments."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        mock_flac = MagicMock()
+        mock_flac.tags = {
+            "ARTIST": ["Artist"],
+            "ALBUM": ["Album"],
+            "TRACKNUMBER": ["2/10"],
+            "DISCNUMBER": ["1"],
+        }
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            with patch("musicbrainzngs.search_releases", return_value=SAMPLE_RELEASE):
+                with patch(
+                    "musicbrainzngs.get_release_by_id",
+                    return_value=SAMPLE_RELEASE_DETAIL,
+                ):
+                    tag_directory(tmp_path, [flac])
+
+        # Track 2 is "Second Track" in SAMPLE_RELEASE_DETAIL
+        assert mock_flac.tags.get("TITLE") == ["Second Track"]
+
+    def test_flac_add_tags_called_when_tags_none(self, tmp_path: Path) -> None:
+        """_write_flac_tags calls add_tags() when audio.tags is None."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        tags: dict[str, Any] = {}
+        mock_flac = MagicMock()
+        mock_flac.tags = None  # simulate file with no tag block
+
+        # add_tags() must actually install the tag dict so the assert passes
+        def _install_tags() -> None:
+            mock_flac.tags = tags
+
+        mock_flac.add_tags.side_effect = _install_tags
+
+        release = ReleaseInfo(
+            mbid="abc-123",
+            release_group_mbid="rg-456",
+            title="Album",
+            artist="Artist",
+            album_artist="Artist",
+            year="2020",
+            tracks={},
+        )
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            _write_flac_tags(flac, release, None)
+
+        mock_flac.add_tags.assert_called_once()
+        assert tags["ARTIST"] == ["Artist"]
+        mock_flac.save.assert_called()
+
+    def test_flac_minimal_release_skips_optional_fields(self, tmp_path: Path) -> None:
+        """_write_flac_tags does not write optional tag keys when release fields are empty."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        tags: dict[str, Any] = {}
+        mock_flac = MagicMock()
+        mock_flac.tags = tags
+
+        release = ReleaseInfo(
+            mbid="abc-123",
+            release_group_mbid="",
+            title="Album",
+            artist="Artist",
+            album_artist="Artist",
+            year="2020",
+            tracks={},
+            # all optional fields left at defaults (empty strings / empty lists)
+        )
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            _write_flac_tags(flac, release, None)
+
+        # Core fields are always written
+        assert tags["ARTIST"] == ["Artist"]
+        assert tags["ALBUM"] == ["Album"]
+        # Optional fields must be absent when the release has no data for them
+        assert "ARTISTSORT" not in tags
+        assert "ALBUMARTISTSORT" not in tags
+        assert "ARTISTS" not in tags
+        assert "MUSICBRAINZ_ARTISTID" not in tags
+        assert "MUSICBRAINZ_ALBUMARTISTID" not in tags
+        assert "MUSICBRAINZ_RELEASEGROUPID" not in tags
+        assert "MUSICBRAINZ_ALBUMTYPE" not in tags
+        assert "MUSICBRAINZ_ALBUMSTATUS" not in tags
+        assert "RELEASECOUNTRY" not in tags
+        assert "ORIGINALDATE" not in tags
+        assert "LABEL" not in tags
+        assert "CATALOGNUMBER" not in tags
+        assert "BARCODE" not in tags
+        assert "ASIN" not in tags
+        assert "SCRIPT" not in tags
+        # track is None → TITLE / TRACKNUMBER / DISCNUMBER must not be set
+        assert "TITLE" not in tags
+        assert "TRACKNUMBER" not in tags
+        mock_flac.save.assert_called()
+
+    def test_flac_track_without_recording_mbid(self, tmp_path: Path) -> None:
+        """_write_flac_tags omits MUSICBRAINZ_TRACKID when recording_mbid is empty."""
+        flac = tmp_path / "01.flac"
+        flac.write_bytes(b"fLaC")
+
+        tags: dict[str, Any] = {}
+        mock_flac = MagicMock()
+        mock_flac.tags = tags
+
+        release = ReleaseInfo(
+            mbid="abc-123",
+            release_group_mbid="rg-456",
+            title="Album",
+            artist="Artist",
+            album_artist="Artist",
+            year="2020",
+            tracks={},
+        )
+        track = TrackInfo(number=1, disc=1, title="Track One", recording_mbid="")
+
+        with patch("tune_shifter.tagger.mutagen.flac.FLAC", return_value=mock_flac):
+            _write_flac_tags(flac, release, track)
+
+        assert tags["TITLE"] == ["Track One"]
+        assert "MUSICBRAINZ_TRACKID" not in tags

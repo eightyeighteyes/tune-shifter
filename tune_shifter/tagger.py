@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 import musicbrainzngs
 import mutagen
+import mutagen.flac
 import mutagen.id3 as id3
 import mutagen.mp4
 
@@ -89,6 +90,12 @@ def is_tagged(path: Path) -> bool:
                 return False
             vals = audio.tags.get("----:com.apple.iTunes:MusicBrainz Release Id")
             return bool(vals)
+        if suffix == ".flac":
+            audio = mutagen.flac.FLAC(str(path))
+            if audio.tags is None:
+                return False
+            vals = audio.tags.get("MUSICBRAINZ_ALBUMID")
+            return bool(vals and vals[0])
     except Exception:
         pass
     return False
@@ -118,6 +125,13 @@ def read_release_mbids(path: Path) -> tuple[str, str]:
             rel_mbid = rel_vals[0].decode() if rel_vals else ""  # type: ignore[union-attr]
             rg_mbid = rg_vals[0].decode() if rg_vals else ""  # type: ignore[union-attr]
             return rel_mbid, rg_mbid
+        if suffix == ".flac":
+            audio = mutagen.flac.FLAC(str(path))
+            if audio.tags is None:
+                return "", ""
+            rel_vals = audio.tags.get("MUSICBRAINZ_ALBUMID")
+            rg_vals = audio.tags.get("MUSICBRAINZ_RELEASEGROUPID")
+            return (rel_vals[0] if rel_vals else ""), (rg_vals[0] if rg_vals else "")
     except Exception:
         pass
     return "", ""
@@ -175,6 +189,13 @@ def _read_existing_metadata(path: Path) -> tuple[str, str]:
                 alb_vals = mp4.tags.get("\xa9alb")
                 artist = str(art_vals[0]) if art_vals else ""
                 album = str(alb_vals[0]) if alb_vals else ""
+        elif suffix == ".flac":
+            flac = mutagen.flac.FLAC(str(path))
+            if flac.tags is not None:
+                art_vals = flac.tags.get("ARTIST")
+                alb_vals = flac.tags.get("ALBUM")
+                artist = art_vals[0] if art_vals else ""
+                album = alb_vals[0] if alb_vals else ""
     except Exception as exc:
         logger.debug("Could not read tags from %s: %s", path, exc)
 
@@ -351,6 +372,8 @@ def _write_tags(path: Path, release: ReleaseInfo) -> None:
         _write_mp3_tags(path, release, track_info)
     elif suffix == ".m4a":
         _write_m4a_tags(path, release, track_info)
+    elif suffix == ".flac":
+        _write_flac_tags(path, release, track_info)
     else:
         logger.warning("Unsupported format for tagging: %s", path)
 
@@ -381,6 +404,17 @@ def _match_track(path: Path, release: ReleaseInfo) -> TrackInfo | None:
                 disk_vals = mp4.tags.get("disk")
                 if disk_vals:
                     disc = disk_vals[0][0]  # type: ignore[index]
+        elif suffix == ".flac":
+            flac = mutagen.flac.FLAC(str(path))
+            if flac.tags is not None:
+                trck_vals = flac.tags.get("TRACKNUMBER")
+                if trck_vals:
+                    trck_s = trck_vals[0].split("/")[0]
+                    track_num = int(trck_s) if trck_s.isdigit() else 0
+                disc_vals = flac.tags.get("DISCNUMBER")
+                if disc_vals:
+                    disc_s = disc_vals[0].split("/")[0]
+                    disc = int(disc_s) if disc_s.isdigit() else 1
     except Exception:
         return None
 
@@ -574,3 +608,81 @@ def _write_m4a_tags(path: Path, release: ReleaseInfo, track: TrackInfo | None) -
 
     audio.save()
     logger.debug("Wrote M4A tags to %s", path)
+
+
+def _write_flac_tags(path: Path, release: ReleaseInfo, track: TrackInfo | None) -> None:
+    audio = mutagen.flac.FLAC(str(path))
+    if audio.tags is None:
+        audio.add_tags()
+
+    assert audio.tags is not None
+
+    def _v(value: str) -> list[str]:
+        """Wrap a string as a single-element Vorbis comment list."""
+        return [value]
+
+    # Core tags
+    audio.tags["ARTIST"] = _v(release.artist)
+    audio.tags["ALBUMARTIST"] = _v(release.album_artist)
+    audio.tags["ALBUM"] = _v(release.title)
+    audio.tags["DATE"] = _v(release.year)
+    audio.tags["MUSICBRAINZ_ALBUMID"] = _v(release.mbid)
+
+    # Sort names
+    if release.artist_sort:
+        audio.tags["ARTISTSORT"] = _v(release.artist_sort)
+    if release.album_artist_sort:
+        audio.tags["ALBUMARTISTSORT"] = _v(release.album_artist_sort)
+
+    # Multi-value artists
+    if release.artists:
+        audio.tags["ARTISTS"] = _v("; ".join(release.artists))
+
+    # MusicBrainz IDs
+    if release.artist_mbids:
+        audio.tags["MUSICBRAINZ_ARTISTID"] = _v("; ".join(release.artist_mbids))
+    if release.album_artist_mbid:
+        audio.tags["MUSICBRAINZ_ALBUMARTISTID"] = _v(release.album_artist_mbid)
+    if release.release_group_mbid:
+        audio.tags["MUSICBRAINZ_RELEASEGROUPID"] = _v(release.release_group_mbid)
+
+    # Release metadata
+    if release.release_type:
+        audio.tags["MUSICBRAINZ_ALBUMTYPE"] = _v(release.release_type)
+    if release.release_status:
+        audio.tags["MUSICBRAINZ_ALBUMSTATUS"] = _v(release.release_status)
+    if release.release_country:
+        audio.tags["RELEASECOUNTRY"] = _v(release.release_country)
+    if release.original_date:
+        audio.tags["ORIGINALDATE"] = _v(release.original_date)
+    if release.label:
+        audio.tags["LABEL"] = _v(release.label)
+    if release.catalog_number:
+        audio.tags["CATALOGNUMBER"] = _v(release.catalog_number)
+    if release.barcode:
+        audio.tags["BARCODE"] = _v(release.barcode)
+    if release.asin:
+        audio.tags["ASIN"] = _v(release.asin)
+    if release.script:
+        audio.tags["SCRIPT"] = _v(release.script)
+
+    # Track and disc numbers with totals
+    if track is not None:
+        total_trck = (
+            f"{track.number}/{track.total_tracks}"
+            if track.total_tracks
+            else str(track.number)
+        )
+        total_disc = (
+            f"{track.disc}/{release.total_discs}"
+            if release.total_discs > 1
+            else str(track.disc)
+        )
+        audio.tags["TRACKNUMBER"] = _v(total_trck)
+        audio.tags["DISCNUMBER"] = _v(total_disc)
+        audio.tags["TITLE"] = _v(track.title)
+        if track.recording_mbid:
+            audio.tags["MUSICBRAINZ_TRACKID"] = _v(track.recording_mbid)
+
+    audio.save()
+    logger.debug("Wrote FLAC tags to %s", path)
