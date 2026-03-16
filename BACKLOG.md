@@ -24,6 +24,9 @@
 ## Menu Bar Status Item
 *LP* — when the daemon runs, show a menu bar icon with a "Sync Now" item; requires `rumps` dependency and threading integration with the daemon lifecycle
 
+## ALAC Support
+*Single* — add `"alac"` to `_FORMAT_LABELS` in `bandcamp.py`; the rest of the pipeline already handles `.m4a` containers (ALAC and AAC share the same container format and tag schema via `mutagen.mp4.MP4`)
+
 # Needs Refinement
 ## Best Release
 *Side* — when multiple MB results exist, prefer the release closest to the original physical format (LP/CD over digital/streaming)
@@ -48,3 +51,7 @@
 
 ## Allow a user to verify tags before they're written
 ⚠️ Not scoped — needs UI design (CLI prompt? TUI? GUI?) before estimating
+
+# Needs Estimation
+
+Nothing to estimate.
