@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import logging
+import os
 import shutil
 import signal
 import subprocess
@@ -300,6 +301,15 @@ def _cmd_daemon(config: Config, config_path: Path) -> None:
     watcher.join()
 
 
+def _launchd_domain() -> str:
+    """Return the launchd domain for the current user's GUI session (macOS).
+
+    bootstrap/bootout require an explicit domain; gui/<uid> is the correct
+    target for user agents in ~/Library/LaunchAgents.
+    """
+    return f"gui/{os.getuid()}"
+
+
 def _service_pid() -> int | None:
     """Return the PID of the running tune-shifter service, or None if not running.
 
@@ -332,7 +342,11 @@ def _cmd_stop() -> None:
     if _service_pid() is None:
         print("tune-shifter is already stopped.")
         return
-    subprocess.run(["launchctl", "unload", str(_PLIST_PATH)], check=True)
+    # bootout stops and unregisters the service; use check=False so a
+    # non-zero exit (e.g. already unloaded) doesn't raise.
+    subprocess.run(
+        ["launchctl", "bootout", _launchd_domain(), str(_PLIST_PATH)], check=False
+    )
     print("tune-shifter stopped.")
 
 
@@ -345,7 +359,11 @@ def _cmd_play() -> None:
     if _service_pid() is not None:
         print("tune-shifter is already running.")
         return
-    subprocess.run(["launchctl", "load", str(_PLIST_PATH)], check=True)
+    # bootstrap registers and starts the service; it returns a proper non-zero
+    # exit code on failure, unlike the deprecated `launchctl load`.
+    subprocess.run(
+        ["launchctl", "bootstrap", _launchd_domain(), str(_PLIST_PATH)], check=True
+    )
     print("tune-shifter started.")
 
 
@@ -390,7 +408,9 @@ def _cmd_install_service(config_path: Path) -> None:
 </plist>"""
     _PLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
     _PLIST_PATH.write_text(plist)
-    subprocess.run(["launchctl", "load", str(_PLIST_PATH)], check=True)
+    subprocess.run(
+        ["launchctl", "bootstrap", _launchd_domain(), str(_PLIST_PATH)], check=True
+    )
     print("tune-shifter installed and started.")
     print(f"  Logs → {_LOG_PATH}")
     print("\nUseful commands:")
@@ -404,7 +424,9 @@ def _cmd_uninstall_service() -> None:
     if not _PLIST_PATH.exists():
         print("Service is not installed.")
         return
-    subprocess.run(["launchctl", "unload", str(_PLIST_PATH)], check=False)
+    subprocess.run(
+        ["launchctl", "bootout", _launchd_domain(), str(_PLIST_PATH)], check=False
+    )
     _PLIST_PATH.unlink()
     print("Service removed.")
 

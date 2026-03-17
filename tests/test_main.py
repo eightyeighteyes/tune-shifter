@@ -11,6 +11,7 @@ from tune_shifter.__main__ import (
     _cmd_play,
     _cmd_status,
     _cmd_stop,
+    _launchd_domain,
     _service_pid,
     _yn_prompt,
 )
@@ -110,7 +111,7 @@ class TestCmdStop:
         ):
             _cmd_stop()
         mock_run.assert_called_once_with(
-            ["launchctl", "unload", str(plist)], check=True
+            ["launchctl", "bootout", _launchd_domain(), str(plist)], check=False
         )
         assert "stopped" in capsys.readouterr().out
 
@@ -146,7 +147,9 @@ class TestCmdPlay:
             patch("subprocess.run") as mock_run,
         ):
             _cmd_play()
-        mock_run.assert_called_once_with(["launchctl", "load", str(plist)], check=True)
+        mock_run.assert_called_once_with(
+            ["launchctl", "bootstrap", _launchd_domain(), str(plist)], check=True
+        )
         assert "started" in capsys.readouterr().out
 
 
