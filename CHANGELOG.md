@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.9.0...v0.10.0) (2026-03-17)
+
+
+### Features
+
+* config show/set subcommands ([#38](https://github.com/eightyeighteyes/tune-shifter/issues/38)) ([978a650](https://github.com/eightyeighteyes/tune-shifter/commit/978a65061925db0485234c560544db7feb3b9a1a))
+* derive MusicBrainz app version from package, not config ([#40](https://github.com/eightyeighteyes/tune-shifter/issues/40)) ([28236e0](https://github.com/eightyeighteyes/tune-shifter/commit/28236e0bc924b4acb0a62fb47fc0bb06bd297977))
+* live-reload config without daemon restart ([#41](https://github.com/eightyeighteyes/tune-shifter/issues/41)) ([283ac9e](https://github.com/eightyeighteyes/tune-shifter/commit/283ac9e20b92b384c5050ad6dda9ddd7553423cb))
+
 ## [0.9.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.8.1...v0.9.0) (2026-03-16)
 
 
