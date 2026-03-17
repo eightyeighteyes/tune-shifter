@@ -45,3 +45,6 @@
 
 ## bug: pyenv shim shadows Homebrew binary after dev/brew cycle
 *Single* — formula is clean (isolated venv). Root cause: a past dev practice (pre-Poetry) wrote `tune-shifter` to pyenv's global site-packages; `pyenv rehash` registered the shim and it persisted. Fix: audit current dev paths for any global pip writes; add `.python-version` to the repo so pyenv doesn't pick up executables from Poetry's cache venv; document the canonical dev workflow.
+
+# Needs Estimation
+-- don't discard this section --

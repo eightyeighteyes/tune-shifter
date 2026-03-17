@@ -13,6 +13,8 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import logging
+import os
+import re
 import shutil
 import signal
 import subprocess
@@ -107,6 +109,9 @@ def main() -> None:
         "uninstall-service",
         help="Remove the launchd user agent registration.",
     )
+    subparsers.add_parser("stop", help="Stop the tune-shifter service.")
+    subparsers.add_parser("play", help="Start the tune-shifter service.")
+    subparsers.add_parser("status", help="Show whether tune-shifter is running.")
 
     # config subcommand
     config_parser = subparsers.add_parser(
@@ -145,6 +150,15 @@ def main() -> None:
         return
     if command == "uninstall-service":
         _cmd_uninstall_service()
+        return
+    if command == "stop":
+        _cmd_stop()
+        return
+    if command == "play":
+        _cmd_play()
+        return
+    if command == "status":
+        _cmd_status()
         return
 
     # Config commands bypass daemon lifecycle (no musicbrainzngs setup needed).
@@ -288,6 +302,137 @@ def _cmd_daemon(config: Config, config_path: Path) -> None:
     watcher.join()
 
 
+def _launchd_domain() -> str:
+    """Return the launchd domain for the current user's GUI session (macOS).
+
+    bootstrap/bootout require an explicit domain; gui/<uid> is the correct
+    target for user agents in ~/Library/LaunchAgents.
+    """
+    return f"gui/{os.getuid()}"
+
+
+def _launchctl_list() -> subprocess.CompletedProcess[str]:
+    """Run `launchctl list <label>` and return the result."""
+    return subprocess.run(
+        ["launchctl", "list", _SERVICE_LABEL],
+        capture_output=True,
+        text=True,
+    )
+
+
+# Matches simple scalar entries in launchctl list output, e.g.:
+#     "PID" = 12345;
+#     "LastExitStatus" = 256;
+#     "Label" = "com.tune-shifter";
+# Skips complex values (arrays, nested dicts) that span multiple lines.
+_LAUNCHCTL_ENTRY_RE = re.compile(r'^\s*"(\w+)"\s*=\s*(?:"([^"]*)"|([\w./\-]+));\s*$')
+
+
+def _parse_launchctl_info(output: str) -> dict[str, str]:
+    """Extract scalar key/value pairs from launchctl dict output."""
+    info: dict[str, str] = {}
+    for line in output.splitlines():
+        m = _LAUNCHCTL_ENTRY_RE.match(line)
+        if m:
+            # group(2) is a quoted string value; group(3) is an unquoted value
+            info[m.group(1)] = m.group(2) if m.group(2) is not None else m.group(3)
+    return info
+
+
+def _service_registered() -> bool:
+    """Return True if tune-shifter is registered in the launchd namespace.
+
+    A non-zero exit from `launchctl list` means the label is unknown to launchd.
+    Zero exit means the service is registered (running or stopped).
+    """
+    return _launchctl_list().returncode == 0
+
+
+def _service_pid() -> int | None:
+    """Return the PID of the running tune-shifter service, or None if not running.
+
+    Queries launchctl for the service label. A positive PID means the process is
+    alive; absent or 0 means the service is registered but not currently running.
+    """
+    result = _launchctl_list()
+    if result.returncode != 0:
+        return None
+    info = _parse_launchctl_info(result.stdout)
+    pid_str = info.get("PID", "")
+    if not pid_str.isdigit():
+        return None
+    pid = int(pid_str)
+    return pid if pid > 0 else None
+
+
+def _cmd_stop() -> None:
+    if not _PLIST_PATH.exists():
+        print(
+            "tune-shifter is not installed as a service. Run tune-shifter install-service first."
+        )
+        return
+    if _service_pid() is None:
+        print("tune-shifter is already stopped.")
+        return
+    # bootout stops and unregisters the service; use check=False so a
+    # non-zero exit (e.g. already unloaded) doesn't raise.
+    subprocess.run(
+        ["launchctl", "bootout", _launchd_domain(), str(_PLIST_PATH)], check=False
+    )
+    print("tune-shifter stopped.")
+
+
+def _cmd_play() -> None:
+    if not _PLIST_PATH.exists():
+        print(
+            "tune-shifter is not installed as a service. Run tune-shifter install-service first."
+        )
+        return
+    if _service_pid() is not None:
+        print("tune-shifter is already running.")
+        return
+    if _service_registered():
+        # Registered but not running (PID = "-"): bootstrap would fail with EIO
+        # because the label is already in launchd's namespace. Use kickstart instead.
+        subprocess.run(
+            ["launchctl", "kickstart", f"{_launchd_domain()}/{_SERVICE_LABEL}"],
+            check=True,
+        )
+    else:
+        # Not registered at all: bootstrap from the plist.
+        subprocess.run(
+            ["launchctl", "bootstrap", _launchd_domain(), str(_PLIST_PATH)], check=True
+        )
+    print("tune-shifter started.")
+
+
+def _cmd_status() -> None:
+    if not _PLIST_PATH.exists():
+        print("tune-shifter is not installed as a service.")
+        return
+    pid = _service_pid()
+    if pid is None:
+        result = _launchctl_list()
+        if result.returncode == 0:
+            # Registered but not running — surface the last exit code so the
+            # user can tell whether it crashed or was cleanly stopped.
+            info = _parse_launchctl_info(result.stdout)
+            last_exit = info.get("LastExitStatus", "0")
+            if last_exit != "0":
+                print(f"tune-shifter is not running (crashed, last exit: {last_exit})")
+                print(f"  Logs → {_LOG_PATH}")
+                return
+        print("tune-shifter is not running.")
+        return
+    ps = subprocess.run(
+        ["ps", "-p", str(pid), "-o", "etime="],
+        capture_output=True,
+        text=True,
+    )
+    uptime = ps.stdout.strip() if ps.returncode == 0 else "unknown"
+    print(f"tune-shifter is running (pid {pid}, uptime {uptime})")
+
+
 def _cmd_install_service(config_path: Path) -> None:
     exec_path = shutil.which("tune-shifter") or sys.argv[0]
     _LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -312,21 +457,25 @@ def _cmd_install_service(config_path: Path) -> None:
 </plist>"""
     _PLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
     _PLIST_PATH.write_text(plist)
-    subprocess.run(["launchctl", "load", str(_PLIST_PATH)], check=True)
-    print(f"Service installed and started.")
-    print(f"  Logs  → {_LOG_PATH}")
-    print(f"  Plist → {_PLIST_PATH}")
-    print(f"\nTo stop the service temporarily:")
-    print(f"  launchctl unload {_PLIST_PATH}")
-    print(f"To remove it permanently:")
-    print(f"  tune-shifter uninstall-service")
+    subprocess.run(
+        ["launchctl", "bootstrap", _launchd_domain(), str(_PLIST_PATH)], check=True
+    )
+    print("tune-shifter installed and started.")
+    print(f"  Logs → {_LOG_PATH}")
+    print("\nUseful commands:")
+    print("  tune-shifter stop             # pause the service")
+    print("  tune-shifter play             # resume the service")
+    print("  tune-shifter status           # check if it's running")
+    print("  tune-shifter uninstall-service  # remove it permanently")
 
 
 def _cmd_uninstall_service() -> None:
     if not _PLIST_PATH.exists():
         print("Service is not installed.")
         return
-    subprocess.run(["launchctl", "unload", str(_PLIST_PATH)], check=False)
+    subprocess.run(
+        ["launchctl", "bootout", _launchd_domain(), str(_PLIST_PATH)], check=False
+    )
     _PLIST_PATH.unlink()
     print("Service removed.")
 
