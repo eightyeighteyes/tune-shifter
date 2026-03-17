@@ -43,22 +43,5 @@
 ## Allow a user to verify tags before they're written
 ⚠️ Not scoped — needs UI design (CLI prompt? TUI? GUI?) before estimating
 
-# Needs Estimation
-
-## zsh shortcuts
-I want tab completion for tune-shifter commands in zsh.
-
-## bug: tune-shifter somehow gets pip installed when homebrew installed
-after brew install i see 
-```
-[tune-shifter] which tune-shifter
-/Users/theodore.terry/.pyenv/shims/tune-shifter
-```
-
-but if i do `pip uninstall tune-shifter`, i see:
-```
-[tune-shifter] which tune-shifter
-/opt/homebrew/bin/tune-shifter
-```
-
-## 
+## bug: pyenv shim shadows Homebrew binary after dev/brew cycle
+*Single* — formula is clean (isolated venv). Root cause: a past dev practice (pre-Poetry) wrote `tune-shifter` to pyenv's global site-packages; `pyenv rehash` registered the shim and it persisted. Fix: audit current dev paths for any global pip writes; add `.python-version` to the repo so pyenv doesn't pick up executables from Poetry's cache venv; document the canonical dev workflow.
