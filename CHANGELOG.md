@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.13.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.12.1...v0.13.0) (2026-03-17)
+
+
+### Features
+
+* add stop, play, status service commands ([#49](https://github.com/eightyeighteyes/tune-shifter/issues/49)) ([6244ed8](https://github.com/eightyeighteyes/tune-shifter/commit/6244ed8736eb7377ef0ee8e08b0cecf48caaa9f0))
+
 ## [0.12.1](https://github.com/eightyeighteyes/tune-shifter/compare/v0.12.0...v0.12.1) (2026-03-17)
 
 
