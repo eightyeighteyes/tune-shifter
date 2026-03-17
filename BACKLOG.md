@@ -3,9 +3,6 @@
 > Estimates use the vinyl scale: Single (<0.5), Side (0.5–1), LP (2), 2xLP (4), Box Set (4–8), Discography (>8)
 > ⚠️ = needs scoping before work can start
 
-## Hotload config changes
-*Side* — watchdog (already a dep) can watch the config file cheaply; the complexity is safely propagating changes to the live `Syncer` (poll interval) and `Watcher` (paths) threads without a full restart
-
 ## Producer Support
 *Side* — add recording-rels include to `get_release_by_id` call and traverse relationships to extract producer credits
 
