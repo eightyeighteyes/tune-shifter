@@ -58,12 +58,26 @@ def _get_version() -> str:
 def main() -> None:
     # Rename the process so Activity Monitor and OS permission dialogs show
     # "tune-shifter" instead of "Python".
+    #
+    # Two layers are needed on macOS:
+    #   1. setproctitle updates argv[0] — affects `ps` output.
+    #   2. NSProcessInfo.setProcessName_ updates the Cocoa process name —
+    #      affects Activity Monitor's Name column (p_comm is read-only from
+    #      userspace, but Cocoa's display name is changeable).
+    # On non-macOS platforms setproctitle alone is sufficient.
     try:
         import setproctitle
 
         setproctitle.setproctitle("tune-shifter")
     except Exception:
         pass
+    if sys.platform == "darwin":
+        try:
+            from AppKit import NSProcessInfo
+
+            NSProcessInfo.processInfo().setProcessName_("tune-shifter")
+        except Exception:
+            pass
 
     parser = argparse.ArgumentParser(
         prog="tune-shifter",
