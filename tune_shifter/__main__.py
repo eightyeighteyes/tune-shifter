@@ -56,6 +56,15 @@ def _get_version() -> str:
 
 
 def main() -> None:
+    # Rename the process so Activity Monitor and OS permission dialogs show
+    # "tune-shifter" instead of "Python".
+    try:
+        import setproctitle
+
+        setproctitle.setproctitle("tune-shifter")
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(
         prog="tune-shifter",
         description="Automated audio library ingest from Bandcamp.",
