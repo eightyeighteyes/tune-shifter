@@ -1174,16 +1174,16 @@ _RELEASE_WITH_PRODUCERS: dict[str, Any] = {
                         "recording": {
                             "id": "rec-111",
                             "title": "First Track",
-                            "relation-list": [
+                            # musicbrainzngs parses <relation-list target-type="artist">
+                            # as "artist-relation-list" (not "relation-list")
+                            "artist-relation-list": [
                                 {
                                     "type": "producer",
-                                    "target-type": "artist",
                                     "direction": "backward",
                                     "artist": {"id": "prod-1", "name": "Rick Rubin"},
                                 },
                                 {
                                     "type": "producer",
-                                    "target-type": "artist",
                                     "direction": "backward",
                                     "artist": {
                                         "id": "prod-2",
@@ -1199,11 +1199,10 @@ _RELEASE_WITH_PRODUCERS: dict[str, Any] = {
                         "recording": {
                             "id": "rec-222",
                             "title": "Second Track",
-                            # No producer credits on this track
-                            "relation-list": [
+                            # No producer credits — only a non-producer artist relation
+                            "artist-relation-list": [
                                 {
                                     "type": "engineer",
-                                    "target-type": "artist",
                                     "direction": "backward",
                                     "artist": {"id": "eng-1", "name": "Some Engineer"},
                                 }

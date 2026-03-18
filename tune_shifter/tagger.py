@@ -384,9 +384,11 @@ def _parse_release(raw: dict[str, Any]) -> ReleaseInfo:
                 pos = track_raw.get("position", 0)
                 track_num = int(pos) if str(pos).isdigit() else 0
             recording = track_raw.get("recording", {})
+            # musicbrainzngs parses <relation-list target-type="artist"> into
+            # "artist-relation-list" (key = "{target-type}-relation-list")
             producers = [
                 rel["artist"]["name"]
-                for rel in recording.get("relation-list", [])
+                for rel in recording.get("artist-relation-list", [])
                 if rel.get("type") == "producer" and rel.get("artist", {}).get("name")
             ]
             key = f"{disc_num}-{track_num}"
