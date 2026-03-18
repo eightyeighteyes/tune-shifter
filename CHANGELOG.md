@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.14.0...v0.15.0) (2026-03-18)
+
+
+### Features
+
+* config reload fix, download status callback, format selector ([#56](https://github.com/eightyeighteyes/tune-shifter/issues/56)) ([ab9d9c8](https://github.com/eightyeighteyes/tune-shifter/commit/ab9d9c8b652297b57353e8ab1ce1774da98bc393))
+* rename process to tune-shifter via setproctitle ([#59](https://github.com/eightyeighteyes/tune-shifter/issues/59)) ([b62150d](https://github.com/eightyeighteyes/tune-shifter/commit/b62150d7f625460fb2a40cf06424fcc6a0d5c7b1))
+* show pipeline stage in menu bar status item ([#58](https://github.com/eightyeighteyes/tune-shifter/issues/58)) ([a2d8fdd](https://github.com/eightyeighteyes/tune-shifter/commit/a2d8fdd0e7d1f26817e1d939bb0d48b51a7c1352))
+
 ## [0.14.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.13.0...v0.14.0) (2026-03-18)
 
 
