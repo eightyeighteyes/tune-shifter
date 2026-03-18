@@ -25,7 +25,33 @@ class TuneShifter < Formula
     system Formula["python@3.11"].opt_bin/"python3.11", "-m", "venv", venv
     system venv/"bin/pip", "install", "--upgrade", "pip"
     system venv/"bin/pip", "install", buildpath
-    bin.install_symlink venv/"bin/tune-shifter"
+
+    # Compile a native launcher binary so macOS sets p_comm to "tune-shifter"
+    # at exec time.  A symlink to the Python shebang script would leave p_comm
+    # as "python3.11", which shows up in Activity Monitor.  The compiled binary
+    # embeds Python (Py_SetProgramName + Py_Main) and stays alive as the
+    # top-level process, so the kernel-level name is always "tune-shifter".
+    venv_python = venv/"bin/python3"
+    cflags  = Utils.safe_popen_read(venv_python, "-c",
+                "import sysconfig; print(sysconfig.get_config_var('CFLAGS') or '')").chomp
+    ldflags = Utils.safe_popen_read(venv_python, "-c",
+                "import sysconfig; print(sysconfig.get_config_var('LDFLAGS') or '')").chomp
+    include_dir = Utils.safe_popen_read(venv_python, "-c",
+                "import sysconfig; print(sysconfig.get_path('include'))").chomp
+    lib_dir = Utils.safe_popen_read(venv_python, "-c",
+                "import sysconfig; print(sysconfig.get_config_var('LIBDIR') or '')").chomp
+    py_ver = Utils.safe_popen_read(venv_python, "-c",
+                "import sysconfig; print(sysconfig.get_config_var('LDVERSION') or '')").chomp
+    system ENV.cc,
+           buildpath/"launcher/main.c",
+           "-DVENV_PYTHON='\"#{venv_python}\"'",
+           "-I#{include_dir}",
+           *cflags.split,
+           "-L#{lib_dir}", "-lpython#{py_ver}",
+           *ldflags.split,
+           "-Wno-deprecated-declarations",
+           "-o", bin/"tune-shifter"
+
     zsh_completion.install "completions/_tune-shifter"
     (share/"tune-shifter").install "USAGE.md"
   end
