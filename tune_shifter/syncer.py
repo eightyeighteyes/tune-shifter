@@ -78,7 +78,10 @@ def _spawn_worker(  # pragma: no cover
     ctx = multiprocessing.get_context("spawn")
     status_q: Any = ctx.Queue()
     result_q: Any = ctx.Queue()
-    proc = ctx.Process(target=target, args=(*args, status_q, result_q), daemon=True)
+    # Not daemon=True: daemon subprocesses on macOS can have localhost networking
+    # issues that break Playwright's Node.js ↔ Chromium DevTools Protocol channel.
+    # The parent cleans up via proc.join() and the process terminates naturally.
+    proc = ctx.Process(target=target, args=(*args, status_q, result_q))
     proc.start()
     return proc, status_q, result_q
 
