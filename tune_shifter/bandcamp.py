@@ -436,6 +436,10 @@ def _paginate(page: Any, endpoint: str, fan_id: int) -> list[dict[str, Any]]:
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(body)
                 });
+                if (!r.ok) {
+                    const preview = (await r.text()).slice(0, 200);
+                    throw new Error(`HTTP ${r.status} from ${url}: ${preview}`);
+                }
                 return await r.json();
             }""",
             [endpoint, payload],
