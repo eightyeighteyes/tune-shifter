@@ -133,14 +133,21 @@ def run_in_subprocess(
         (path, config),
     )
 
-    # Drain stage messages while the subprocess runs.  _DIR_SENTINEL messages
-    # are routed to _on_directory; everything else goes to stage_callback.
+    # Drain both queues while the subprocess runs.  _DIR_SENTINEL messages in
+    # stage_q are routed to _on_directory; everything else goes to
+    # stage_callback.  log_q MUST also be drained here — multiprocessing.Queue
+    # uses an OS pipe with a finite buffer; if the subprocess fills log_q
+    # without the parent consuming it, the subprocess blocks on put() and
+    # proc.is_alive() never becomes False (deadlock).  Draining here also
+    # surfaces log records in real-time rather than only after the subprocess
+    # exits.
     while proc.is_alive():  # pragma: no cover
         try:
-            msg = stage_q.get(timeout=0.5)
+            msg = stage_q.get(timeout=0.1)
             _handle_stage_msg(msg, stage_callback, _on_directory)
         except queue.Empty:
             pass
+        _replay_log_queue(log_q)
 
     # Drain any messages that arrived just before the process exited.
     while True:
