@@ -1,7 +1,14 @@
-# Backlog
+# 0.16.1
+## Bug: macOS status bar doesn't show download/pipeline status
+*Side* — regression from 0.16.0 subprocess isolation. Stage/status callbacks now cross the process boundary via IPC queues; something in the wiring between the drain loop and the rumps menu update is broken in the real daemon context. Reproducible when running as a service with automatic Bandcamp sync.
 
-> Estimates use the vinyl scale: Single (<0.5), Side (0.5–1), LP (2), 2xLP (4), Box Set (4–8), Discography (>8)
-> ⚠️ = needs scoping before work can start
+## Bug: "MusicBrainz Release Id" tag casing
+*Single* — tag key written with wrong casing; one-line fix in tagger.
+
+## Bug: Log noise from musicbrainzngs and urllib3
+*Single* — set `musicbrainzngs` and `urllib3` loggers to WARNING inside the subprocess workers so their DEBUG/INFO noise is suppressed. Covers both library loggers in one commit.
+
+# 0.17.0
 
 ## Error Handling: when there's an error in the pipeline, send a system level notification
 *Single* — hook points already exist (`ExtractionError`, `TaggingError`, `ArtworkError`, `MoveError` in `pipeline.py`, bare `except Exception` in `watcher.py`); wire `rumps.notification()` to each failure site.
@@ -12,6 +19,7 @@ Possible error states to inform the user about:
 - Tagging failure
 - Unable to find image for release
 - Library folder doesn't exist
+
 ## Bandcamp Logout: Remove or replace the active Bandcamp session
 *Side* — two surfaces (CLI `tune-shifter sync logout` + menu bar Logout item); CLI deletes the session file and state file; menu bar item calls the same logic and refreshes Bandcamp item state
 ```
@@ -20,6 +28,48 @@ Sync Status
 Logout
 ```
 
+## Improve Tagging Quality: Per-track lookup using existing tags (light approach)
+*Side* — instead of picking a single MusicBrainz release for the whole album based on the folder name, look up each track individually using its existing `artist`, `title`, and `album` tags, then reconcile to the most common release. Fixes track-count mismatches (e.g. 17-track vs 18-track editions) that cause title offsets. Known mis-tagged albums: De La Soul "Stakes is High", "3 Feet High and Rising" (MBID `0cb69f0f`), Converge "Love is Not Enough" (MBID `0fec265d`). See AcoustID item below for the heavier follow-on approach.
+
+## Improve Image Retrieval: Compress CAA images over size threshold
+*Single* — when a CAA candidate exceeds `max_bytes`, apply the same Pillow downscale/compress logic already used for oversized Bandcamp ZIP art rather than skipping it. Reuses existing compression helper; needs a test covering the compress-then-embed path for CAA images.
+
+## Add Bandcamp Auto Sync Frequency Options to Menu Bar App
+*Side* — config and syncer already support arbitrary intervals; this adds a submenu with radio-style checkmarks (Off / 5 min / 15 min / 30 min / hourly / daily) that writes the new value via `config set` and triggers a live reload so the running daemon picks it up without a restart.
+
+Options:
+- Off
+- 5 minutes
+- 15 minutes
+- 30 minutes
+- hourly
+- daily
+
+# 1.0.0
+
+## Rebrand to "kamp-daemon"
+*Side* — rename package, CLI entry point, config dir (`~/.config/kamp-daemon`), state dir, log prefixes, README, and pyproject. Main risk is the config/state migration path for existing installs; needs a decision on auto-migrate vs. deprecation warning before starting.
+
+Replace EVERYTHING that says 'tune-shifter' with 'kamp-daemon'
+
+# Backlog
+
+> Estimates use the vinyl scale: Single (<0.5), Side (0.5–1), LP (2), 2xLP (4), Box Set (4–8), Discography (>8)
+> ⚠️ = needs scoping before work can start
+
+## Full Windows Support
+*Box Set* — prerequisite: Rebrand must ship first. Breakdown:
+
+| Component | Estimate | Notes |
+|---|---|---|
+| Windows tray app (pystray, full parity) | LP | pystray is pull-based (menus rebuilt on open); status animation needs background icon-swap thread; no inline status text like rumps |
+| Windows CI (GitHub Actions `windows-latest`) | Side | Subprocess spawn differences, path separator edge cases, likely several test fixes |
+| Playwright on Windows | Side | Chromium download + DevTools Protocol over localhost; verify subprocess isolation pattern holds |
+| Windows service install (NSSM) | Side | NSSM wraps the CLI; simpler to manage start/stop than Task Scheduler |
+| Chocolatey packaging | Side | `.nuspec`, install/uninstall scripts, community repo submission (review queue can take weeks) |
+| Path/config conventions (`%APPDATA%`) | Single | `pathlib` handles most of it; needs an audit pass |
+
+Target: Windows 10/11 only. Distribution via Chocolatey.
 ## Cross-platform service installation (Linux systemd, Windows Task Scheduler)
 *Side* — Linux systemd unit file is straightforward; Windows Task Scheduler adds another side; can ship incrementally
 
@@ -32,8 +82,8 @@ Logout
 
 ⚠️ Needs scoping: what ranking heuristic? (release format field, country, date proximity?) and what's the fallback when no physical release exists? Note: date-based tie-breaking (earliest release wins) is already implemented; remaining work is format/country preference.
 
-## AcoustID Support
-*LP* — fingerprint audio with `fpcalc`/chromaprint, look up recording via AcoustID API, feed MBID into existing tagger
+## AcoustID Support (heavy tagging approach)
+*LP* — fingerprint audio with `fpcalc`/chromaprint, look up recording via AcoustID API, feed MBID into existing tagger. Prerequisite: per-track lookup (light approach) should ship first. Fingerprinting should be its own subprocess pipeline phase.
 
 ⚠️ Needs scoping: how to handle mismatches between AcoustID result and existing MusicBrainz search? Which takes precedence?
 
@@ -53,4 +103,3 @@ Logout
 
 # Needs Estimation
 -- don't discard this section --
-
