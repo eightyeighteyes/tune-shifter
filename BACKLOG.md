@@ -1,7 +1,5 @@
-# Backlog
+# 0.17.0
 
-> Estimates use the vinyl scale: Single (<0.5), Side (0.5–1), LP (2), 2xLP (4), Box Set (4–8), Discography (>8)
-> ⚠️ = needs scoping before work can start
 
 ## Error Handling: when there's an error in the pipeline, send a system level notification
 *Single* — hook points already exist (`ExtractionError`, `TaggingError`, `ArtworkError`, `MoveError` in `pipeline.py`, bare `except Exception` in `watcher.py`); wire `rumps.notification()` to each failure site.
@@ -21,6 +19,42 @@ Sync Status
 Logout
 ```
 
+## Add Bandcamp Auto Sync Frequency Options to Menu Bar App
+*Side* — config and syncer already support arbitrary intervals; this adds a submenu with radio-style checkmarks (Off / 5 min / 15 min / 30 min / hourly / daily) that writes the new value via `config set` and triggers a live reload so the running daemon picks it up without a restart.
+
+Options:
+- Off
+- 5 minutes
+- 15 minutes
+- 30 minutes
+- hourly
+- daily
+
+# 1.0.0
+
+## Rebrand to "kamp-daemon"
+*Side* — rename package, CLI entry point, config dir (`~/.config/kamp-daemon`), state dir, log prefixes, README, and pyproject. Main risk is the config/state migration path for existing installs; needs a decision on auto-migrate vs. deprecation warning before starting.
+
+Replace EVERYTHING that says 'tune-shifter' with 'kamp-daemon'
+
+# Backlog
+
+> Estimates use the vinyl scale: Single (<0.5), Side (0.5–1), LP (2), 2xLP (4), Box Set (4–8), Discography (>8)
+> ⚠️ = needs scoping before work can start
+
+## Full Windows Support
+*Box Set* — prerequisite: Rebrand must ship first. Breakdown:
+
+| Component | Estimate | Notes |
+|---|---|---|
+| Windows tray app (pystray, full parity) | LP | pystray is pull-based (menus rebuilt on open); status animation needs background icon-swap thread; no inline status text like rumps |
+| Windows CI (GitHub Actions `windows-latest`) | Side | Subprocess spawn differences, path separator edge cases, likely several test fixes |
+| Playwright on Windows | Side | Chromium download + DevTools Protocol over localhost; verify subprocess isolation pattern holds |
+| Windows service install (NSSM) | Side | NSSM wraps the CLI; simpler to manage start/stop than Task Scheduler |
+| Chocolatey packaging | Side | `.nuspec`, install/uninstall scripts, community repo submission (review queue can take weeks) |
+| Path/config conventions (`%APPDATA%`) | Single | `pathlib` handles most of it; needs an audit pass |
+
+Target: Windows 10/11 only. Distribution via Chocolatey.
 ## Cross-platform service installation (Linux systemd, Windows Task Scheduler)
 *Side* — Linux systemd unit file is straightforward; Windows Task Scheduler adds another side; can ship incrementally
 
@@ -55,32 +89,5 @@ Logout
 # Needs Estimation
 -- don't discard this section --
 
-## Add Bandcamp Auto Sync Frequency Options to Menu Bar App
-*Side* — config and syncer already support arbitrary intervals; this adds a submenu with radio-style checkmarks (Off / 5 min / 15 min / 30 min / hourly / daily) that writes the new value via `config set` and triggers a live reload so the running daemon picks it up without a restart.
-
-Options:
-- Off
-- 5 minutes
-- 15 minutes
-- 30 minutes
-- hourly
-- daily
-
-## Rebrand to "kamp-daemon"
-*Side* — rename package, CLI entry point, config dir (`~/.config/kamp-daemon`), state dir, log prefixes, README, and pyproject. Main risk is the config/state migration path for existing installs; needs a decision on auto-migrate vs. deprecation warning before starting.
-
-Replace EVERYTHING that says 'tune-shifter' with 'kamp-daemon'
-
-## Full Windows Support
-*Box Set* — prerequisite: Rebrand must ship first. Breakdown:
-
-| Component | Estimate | Notes |
-|---|---|---|
-| Windows tray app (pystray, full parity) | LP | pystray is pull-based (menus rebuilt on open); status animation needs background icon-swap thread; no inline status text like rumps |
-| Windows CI (GitHub Actions `windows-latest`) | Side | Subprocess spawn differences, path separator edge cases, likely several test fixes |
-| Playwright on Windows | Side | Chromium download + DevTools Protocol over localhost; verify subprocess isolation pattern holds |
-| Windows service install (NSSM) | Side | NSSM wraps the CLI; simpler to manage start/stop than Task Scheduler |
-| Chocolatey packaging | Side | `.nuspec`, install/uninstall scripts, community repo submission (review queue can take weeks) |
-| Path/config conventions (`%APPDATA%`) | Single | `pathlib` handles most of it; needs an audit pass |
-
-Target: Windows 10/11 only. Distribution via Chocolatey.
+## Bug: macOS status bar doesn't show download/pipeline status
+*Side* — regression from 0.16.0 subprocess isolation. Stage/status callbacks now cross the process boundary via IPC queues; something in the wiring between the drain loop and the rumps menu update is broken in the real daemon context. Reproducible when running as a service with automatic Bandcamp sync.
