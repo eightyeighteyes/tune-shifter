@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.16.1](https://github.com/eightyeighteyes/tune-shifter/compare/v0.16.0...v0.16.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* **menu_bar,syncer:** wire status_callback at init; suppress library log noise ([#73](https://github.com/eightyeighteyes/tune-shifter/issues/73)) ([722b202](https://github.com/eightyeighteyes/tune-shifter/commit/722b202ee205b59afc96b31ff28dc2a728488ba7))
+
 ## [0.16.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.15.3...v0.16.0) (2026-03-19)
 
 
