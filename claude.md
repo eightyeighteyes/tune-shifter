@@ -10,6 +10,7 @@
 
 # Workflow
 - Start work with a new branch created from a clean, updated main branch. Do not create files before creating a new branch.
+- One fix or feature per branch / PR.
 - Use red/green TDD
 - Before opening a PR, run all CI steps (testing, linting, type checks, etc) locally
 - Before opening a PR, scan through README.md to make sure it's still valid (nothing it says has drifted from what the application does)
