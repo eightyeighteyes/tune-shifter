@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.18.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.17.0...v0.18.0) (2026-03-21)
+
+
+### Features
+
+* **menu-bar:** add Sync Frequency submenu with radio-style checkmarks ([#81](https://github.com/eightyeighteyes/tune-shifter/issues/81)) ([6ff797f](https://github.com/eightyeighteyes/tune-shifter/commit/6ff797f344fc2fe45dadd65c4a7e8db2c5b0ee11))
+* **tagger:** per-track MusicBrainz lookup to fix track-count edition mismatches ([#79](https://github.com/eightyeighteyes/tune-shifter/issues/79)) ([29db197](https://github.com/eightyeighteyes/tune-shifter/commit/29db197bb7defa8a68462d3c54ec680c77098274))
+
 ## [0.17.0](https://github.com/eightyeighteyes/tune-shifter/compare/v0.16.1...v0.17.0) (2026-03-21)
 
 
