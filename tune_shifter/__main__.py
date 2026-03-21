@@ -301,7 +301,6 @@ def _cmd_logout() -> None:
     print("Logged out. The next sync will require re-authentication.")
 
 
-
 _NOTIFY_SUBTITLES: dict[str, str] = {
     "extraction": "Extraction failed",
     "tagging": "Tagging failed",
