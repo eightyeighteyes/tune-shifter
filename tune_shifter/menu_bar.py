@@ -171,6 +171,22 @@ class MenuBarApp(rumps.App):
         are thread-safe so no main-thread hop is required.
         """
         try:
+            from AppKit import NSBundle
+
+            bundle_id = NSBundle.mainBundle().bundleIdentifier()
+        except Exception:
+            bundle_id = None
+
+        if not bundle_id:
+            # No CFBundleIdentifier (dev venv) — currentNotificationCenter()
+            # raises NSInternalInconsistencyException, which is an ObjC exception
+            # that bypasses Python's except clauses and aborts the process.
+            # Fall back to the deprecated API which works without a bundle.
+            logger.debug("No bundle identifier — using rumps notification fallback")
+            rumps.notification(title, subtitle, message)
+            return
+
+        try:
             import uuid
 
             import objc
@@ -199,8 +215,7 @@ class MenuBarApp(rumps.App):
             )
             center.addNotificationRequest_withCompletionHandler_(request, None)
         except Exception:
-            # No CFBundleIdentifier (dev environment) — fall back to the old API.
-            logger.debug("UNUserNotificationCenter unavailable, using rumps fallback")
+            logger.debug("UNUserNotificationCenter failed, using rumps fallback")
             rumps.notification(title, subtitle, message)
 
     def _on_sync_status(self, msg: str) -> None:
