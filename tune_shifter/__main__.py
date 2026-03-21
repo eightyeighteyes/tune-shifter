@@ -317,26 +317,19 @@ def _cmd_test_notify(notify_type: str) -> None:
     Syncer._run() does when sync_once() raises (there is no subprocess IPC for
     download errors).
 
-    Notifications are delivered via osascript so the command works from any CLI
-    context without requiring a running rumps.App bundle.
+    Notifications are delivered via rumps.notification() — the same mechanism
+    the daemon uses — so the permission model is identical.
     """
     if platform.system() != "Darwin":
         print("test-notify is only supported on macOS.", file=sys.stderr)
         sys.exit(1)
 
-    import json as _json
-    import subprocess as _sp
     import tempfile as _tmp
 
+    import rumps
+
     def _show(title: str, subtitle: str, message: str) -> None:
-        _sp.run(
-            [
-                "osascript",
-                "-e",
-                f"display notification {_json.dumps(message)} with title {_json.dumps(title)} subtitle {_json.dumps(subtitle)}",
-            ],
-            check=False,
-        )
+        rumps.notification(title, subtitle, message)
 
     if notify_type == "download":
         # Download errors go straight to Syncer.error_callback — no IPC path.
