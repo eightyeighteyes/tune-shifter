@@ -1,8 +1,5 @@
 # 0.18.0
 
-## Improve Tagging Quality: Per-track lookup using existing tags (light approach)
-*Side* — instead of picking a single MusicBrainz release for the whole album based on the folder name, look up each track individually using its existing `artist`, `title`, and `album` tags, then reconcile to the most common release. Fixes track-count mismatches (e.g. 17-track vs 18-track editions) that cause title offsets. Known mis-tagged albums: De La Soul "Stakes is High", "3 Feet High and Rising" (MBID `0cb69f0f`), Converge "Love is Not Enough" (MBID `0fec265d`). See AcoustID item below for the heavier follow-on approach.
-
 ## Improve Image Retrieval: Compress CAA images over size threshold
 *Single* — when a CAA candidate exceeds `max_bytes`, apply the same Pillow downscale/compress logic already used for oversized Bandcamp ZIP art rather than skipping it. Reuses existing compression helper; needs a test covering the compress-then-embed path for CAA images.
 
@@ -78,3 +75,15 @@ Target: Windows 10/11 only. Distribution via Chocolatey.
 
 # Needs Estimation
 -- don't discard this section --
+## bug: debug level log noise from asyncio (bandcamp) and PIL.TiffImagePlugin (artwork)
+
+2026-03-21 14:03:19  INFO      tune_shifter.config_monitor  Watching config file for changes: /Users/theodore.terry/.config/tune-shifter/config.toml
+2026-03-21 14:03:19  DEBUG     asyncio  Using selector: KqueueSelector
+2026-03-21 14:03:21  INFO      tune_shifter.bandcamp  Fetched fan_id=4346318 for user 'tedd-e-terry'
+
+2026-03-21 14:03:39  DEBUG     PIL.TiffImagePlugin  tag: XResolution (282) - type: rational (5) Tag Location: 22 - Data Location: 74 - value: b'\x00\x00\x00H\x00\x00\x00\x01'
+2026-03-21 14:03:39  DEBUG     PIL.TiffImagePlugin  tag: YResolution (283) - type: rational (5) Tag Location: 34 - Data Location: 82 - value: b'\x00\x00\x00H\x00\x00\x00\x01'
+2026-03-21 14:03:39  DEBUG     PIL.TiffImagePlugin  tag: ResolutionUnit (296) - type: short (3) - value: b'\x00\x01'
+2026-03-21 14:03:39  DEBUG     PIL.TiffImagePlugin  tag: YCbCrPositioning (531) - type: short (3) - value: b'\x00\x01'
+2026-03-21 14:03:39  DEBUG     PIL.TiffImagePlugin  tag: ExifIFD (34665) - type: long (4) - value: b'\x00\x00\x00Z'
+2026-03-21 14:03:39  INFO      tune_shifter.artwork  All 18 file(s) have qualifying embedded art — skipping Cover Art Archive fetch
